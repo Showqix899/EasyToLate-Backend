@@ -8,6 +8,9 @@ import {
     resetPassword,
     adminStaffInvite,
     adminStaffRegisters,
+    adminUserDelation,
+    userDelation,
+    userUpdation
 } from "../controllers/auth.controller.js"
 
 
@@ -35,6 +38,15 @@ router.post("/admin-staff-invite",adminAccess,adminStaffInvite)
 
 //admin or staff registration 
 router.post("/admin-staff-register/:reg_token",upload.single("profile_pic"),adminStaffRegisters)
+
+//admin user deletion 
+router.delete("/admin-user-delete/:id",adminAccess,adminUserDelation)
+
+//user deletation 
+router.delete("/user-delete/:id",protect,userDelation)
+
+//user updation 
+router.put("/user-update",protect,upload.single("profile_pic"),userUpdation)
 
 
 

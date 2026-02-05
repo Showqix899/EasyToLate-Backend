@@ -10,6 +10,7 @@ import { sendVerificationEmail,sendPasswordResetLinkEmail } from "../services/em
 import { emailQueue } from "../queue/emailQueue.js"
 
 import cloudinary from "../config/cloudinary.js"
+import { createReadStream } from "fs"
 
 
 
@@ -540,3 +541,149 @@ export const adminStaffRegisters = async (req,res)=>{
     }
 }
 
+
+
+//admin user deletion
+export const adminUserDelation = async (req,res)=>{
+    try {
+        const {id}= req.params;
+        //baisc validataion 
+        if (!id){
+            return res.status(400).json({
+                message:"user id is missing"
+            })
+        }
+
+        //find user 
+        const user = await User.findById(id)
+
+        //if user not found
+        if (!user){
+            return res.status(400).json({
+                message:"user not found"
+            })
+        }
+
+
+        await user.deleteOne()
+
+        return res.json({
+            message:"user deleted successfully"
+        })
+
+    } catch (error) {
+        return res.json({
+            message:error.message
+        })
+    }
+}
+
+
+//user delete for user 
+export const userDelation = async(req,res)=>{
+    try {
+        const {id}= req.params;
+        //baisc validataion 
+        if (!id){
+            return res.status(400).json({
+                message:"user id is missing"
+            })
+        }
+
+        //find user 
+        const user = await User.findById(id)
+
+        //check if the user is valid to do delation 
+
+        if (req.user._id !== user._id){
+            return res.json({
+                message:"your are not authorized to do this operation"
+            })
+        }
+
+        //if user not found
+        if (!user){
+            return res.status(400).json({
+                message:"user not found"
+            })
+        }
+
+
+        await user.deleteOne()
+
+        return res.json({
+            message:"user deleted successfully"
+        })
+
+    } catch (error) {
+        return res.json({
+            message:error.message
+        })
+    }
+}
+
+
+//userupdation 
+export const userUpdation = async (req,res)=>{
+    try {
+        const id= req.user._id;
+        const {username,email,phone,address} = req.body;
+        
+
+        //find user 
+        const user = await User.findById(id)
+
+        
+
+        //if user not found
+        if (!user){
+            return res.status(400).json({
+                message:"user not found"
+            })
+        }
+
+        //update user fields if  provided
+
+        if(username) user.username=username
+        if(email) user.email=email
+        if(phone) user.phone=phone
+        if(address) user.address=address
+
+        
+
+        let profilePicUrl = null
+
+        if (req.file){
+            const uploadImage = ()=>{
+                return new Promise((resolve,reject)=>{
+                    const stream = cloudinary.v2.uploader.upload_stream(
+                        {folder:"profile_pic"},
+                        (err,result)=>(result ? resolve(result) : reject(err))
+                    );
+                    streamifier.createReadStream(req.file.buffer).pipe(stream);
+                })
+            }
+
+            const result = await uploadImage();
+            profilePicUrl = result.secure_url;
+            user.profile_pic = profilePicUrl
+        }
+
+        
+        //save the user 
+        await user.save()
+
+
+        
+
+
+        return res.json({
+            message:"updated successfully"
+        })
+
+    } catch (error) {
+        return res.json({
+            message:error.message
+        })
+    }
+}
