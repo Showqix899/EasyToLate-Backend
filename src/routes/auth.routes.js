@@ -6,7 +6,8 @@ import {
     loginUser,
     forgotPassword,
     resetPassword,
-    adminStaffInvite
+    adminStaffInvite,
+    adminStaffRegisters,
 } from "../controllers/auth.controller.js"
 
 
@@ -31,6 +32,10 @@ router.post("/reset-password/:token",resetPassword)
 
 //adminStaff invite 
 router.post("/admin-staff-invite",adminAccess,adminStaffInvite)
+
+//admin or staff registration 
+router.post("/admin-staff-register/:reg_token",upload.single("profile_pic"),adminStaffRegisters)
+
 
 
 

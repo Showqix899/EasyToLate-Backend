@@ -400,7 +400,7 @@ export const adminStaffInvite = async (req,res)=>{
             isActive:true,
         })
 
-        const link = `${process.env.BASE_URL}/api/auth/admin-register/${token}`
+        const link = `${process.env.BASE_URL}/api/auth/admin-staff-register/${token}`
 
         await emailQueue.add(
             "sendAdminStaffInviteEmail",
@@ -422,6 +422,121 @@ export const adminStaffInvite = async (req,res)=>{
 
     } catch (error) {
         console.log(`error at adminInvite controller : ${error.message}`)
+    }
+}
+
+//admin or staff registers 
+export const adminStaffRegisters = async (req,res)=>{
+    try {
+        const {username,email,phone,password,address} = req.body;
+        const {reg_token}=req.params;
+
+        //basic validation
+        if (!reg_token){
+            return res.status(400).json({
+                message:"registration token missing"
+            })
+        }
+
+
+        if (!username || !email || !password){
+            return res.status(400).json({
+                message: "required fields missing",
+            });
+        }
+
+        //see if token exists 
+        const token_recorde = await AdminStaffTokenRecorde.findOne({
+            email:email,
+            invite_token:reg_token,
+        })
+
+        //check if token is found
+        if (!token_recorde){
+            return res.status(400).json({
+                message:"token not found"
+            })
+        }
+
+        //check if the token is valid or not(checking expiry date)
+        const current_time = Date.now() //geting the current token
+
+        //check token expires
+        if (token_recorde.token_expires < current_time){
+            return res.json({
+                message:"token has been expired. Please contact with admin"
+            })
+        }
+
+        //prevent duplicate registration 
+        const exists = await User.findOne({email});
+
+        if (exists){
+            return res.status(400).json({
+                message:"email already registered"
+            })
+        }
+
+        //hash password 
+
+        const hashedPassword = await bcrypt.hash(password,10);
+
+
+        //upload profile picture if provided 
+
+        let porfilePicUrl = null;
+
+        if (req.file){
+            const uploadImage = ()=>{
+                return new Promise((resolve,reject)=>{
+                    const stream = cloudinary.v2.uploader.upload_stream(
+                        {folder:"profile_pic"},
+                        (err,result)=> (result ? resolve(result) : reject(err))
+                    );
+                    streamifier.createReadStream(req.file.buffer).pipe(stream);
+                });
+            }
+
+            const result = await uploadImage();
+            porfilePicUrl = result.secure_url;
+        }
+
+        //generate email verification token 
+
+        const token = crypto.randomBytes(32).toString("hex");
+
+        //create inactive user 
+
+        const user = await User.create({
+            username,
+            email,
+            phone,
+            password:hashedPassword,
+            address,
+            profile_pic: porfilePicUrl,
+            emailVerifyToken:token,
+            emailVerifyExpires: Date.now() + 15 *60*1000,
+            role:token_recorde.role,
+        })
+
+        //create verify link  
+        const verifyLink = `${process.env.BASE_URL}/api/auth/verify-email/${token}`
+
+        //send verification email 
+
+        await sendVerificationEmail(email,verifyLink);
+
+        //make inactive the token 
+        token_recorde.isActive=false
+        await token_recorde.save()
+
+        res.status(201).json({
+        message: "Registration successful. Check your email to verify account."
+        });
+            
+    } catch (error) {
+        console.log("server error at register user funtion ",error.message);
+        res.status(500).json({message:"server error"})
     }
 }
 
