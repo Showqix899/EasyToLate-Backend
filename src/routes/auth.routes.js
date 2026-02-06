@@ -10,7 +10,8 @@ import {
     adminStaffRegisters,
     adminUserDelation,
     userDelation,
-    userUpdation
+    userUpdation,
+    userSearchFilter,
 } from "../controllers/auth.controller.js"
 
 
@@ -47,6 +48,9 @@ router.delete("/user-delete/:id",protect,userDelation)
 
 //user updation 
 router.put("/user-update",protect,upload.single("profile_pic"),userUpdation)
+
+//admin userlist 
+router.get("/user-list",adminAccess,userSearchFilter)
 
 
 

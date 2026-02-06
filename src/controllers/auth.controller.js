@@ -208,7 +208,6 @@ export const loginUser = async (req,res)=>{
             {id:user._id,role:user.role},
             process.env.JWT_SECRET,
             {expiresIn: process.env.JWT_EXPIRES_IN}
-
         );
 
         user.password= undefined; //remove password from response 
@@ -687,3 +686,62 @@ export const userUpdation = async (req,res)=>{
         })
     }
 }
+
+
+//admin user list 
+export const userSearchFilter = async (req,res)=>{
+    try {
+        //query params 
+        const {
+            username,
+            email,
+            role,
+            isActive,
+            page=1,
+            limit = 10,
+        } = req.query;
+
+        //buld  dynamic filter object 
+        let filter = {}
+
+        if (username) {
+            filter.username = {$regex: username, $options: "i"}
+        }
+        
+        if (role){
+            filter.role = role;
+        }
+
+        if (isActive !== undefined){
+            filter.isActive = isActive === "true"
+        }
+
+
+        //pagination calculation 
+
+        const skip = (page -1) * limit;
+
+        //find users 
+        const users = await User.find(filter)
+        .skip(skip)
+        .limit(Number(limit))
+
+        //totla count 
+        const totalUsers = await User.countDocuments(filter);
+
+        return res.json({
+            total:totalUsers,
+            page:Number(page),
+            limit:Number(limit),
+            users:users
+        })
+    } catch (error) {
+        return res.json({
+            message:error.message
+        })
+    }
+}
+
+
+
+

@@ -67,10 +67,16 @@ export const adminAccess = async(req,res,next)=>{
                 message:"token missing"
             })
         }
-
-
+        let decoded;
+       try {
         //decode the jwt 
-        const decoded = jwt.verify(token,process.env.JWT_SECRET)
+        decoded = jwt.verify(token,process.env.JWT_SECRET)
+       } catch (error) {
+        return res.json({
+            message:"invalid jwt or expired jwt token"
+        })
+       }
+
 
         //user by id 
         const user = await User.findById(decoded.id)
