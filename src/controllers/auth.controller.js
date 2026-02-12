@@ -8,9 +8,9 @@ import AdminStaffTokenRecorde from "../models/AdminStaffToken.model.js"
 
 import { sendVerificationEmail,sendPasswordResetLinkEmail } from "../services/email.service.js"
 import { emailQueue } from "../queue/emailQueue.js"
+import { getCache,setCache,deleteCacheByPattern } from "../utils/cache.js"
 
 import cloudinary from "../config/cloudinary.js"
-import { createReadStream } from "fs"
 
 
 
@@ -607,8 +607,12 @@ export const userDelation = async(req,res)=>{
             })
         }
 
-
+        //delete user 
         await user.deleteOne()
+
+
+        //clear cache 
+        await deleteCacheByPattern("adminUsers:*")
 
         return res.json({
             message:"user deleted successfully"
@@ -673,7 +677,8 @@ export const userUpdation = async (req,res)=>{
         await user.save()
 
 
-        
+        //clear cache 
+        await deleteCacheByPattern("adminUsers:*")
 
 
         return res.json({
@@ -700,6 +705,18 @@ export const userSearchFilter = async (req,res)=>{
             page=1,
             limit = 10,
         } = req.query;
+
+
+        //unique cache key
+        const cacheKey = `adminUsers:${JSON.stringify(req.query)}`;
+
+        //check cache 
+        const cachedData = await getCache(cacheKey)
+
+        if (cachedData){
+            console.log("from redis cache")
+            return res.json(cachedData);
+        }
 
         //buld  dynamic filter object 
         let filter = {}
@@ -729,12 +746,17 @@ export const userSearchFilter = async (req,res)=>{
         //totla count 
         const totalUsers = await User.countDocuments(filter);
 
-        return res.json({
+        //constructing response 
+        const response = {
             total:totalUsers,
             page:Number(page),
             limit:Number(limit),
-            users:users
-        })
+            users:users,
+        }
+
+        await setCache(cacheKey,response,300)
+
+        return res.json(response)
     } catch (error) {
         return res.json({
             message:error.message

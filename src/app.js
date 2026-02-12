@@ -4,6 +4,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
 
 import authRoutes from "./routes/auth.routes.js"
+import placeRoutes from "./routes/place.routes.js"
 
 const app = express(); //express app
 
@@ -18,6 +19,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 //main routes *********************
 //auth routes 
 app.use("/api/auth",authRoutes)
+app.use("/api/places",placeRoutes)
 
 
 //******************************** */
