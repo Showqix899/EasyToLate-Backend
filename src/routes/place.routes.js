@@ -1,14 +1,17 @@
 import express from "express";
-import { createPlace } from "../controllers/place.controller.js";
-import {protect,adminAccess} from "../middlewares/auth.mddleware.js";
-import {uploadPlaceImagesMiddleware} from "../middlewares/uploadMultipleImages.middleware.js";
-
+import { creatPlace } from "../controllers/place.controller.js";
+import {protect} from "../middlewares/auth.mddleware.js"
+import { uploadPlaceImagesMiddleware } from "../middlewares/uploadPlaceImages.middleware.js";
 
 
 const router = express.Router();
 
-//create place 
-router.post("/create",protect,uploadPlaceImagesMiddleware,createPlace)
+router.post(
+    "/create",
+    protect,
+    uploadPlaceImagesMiddleware,
+    creatPlace,
+);
 
 
 export default router;

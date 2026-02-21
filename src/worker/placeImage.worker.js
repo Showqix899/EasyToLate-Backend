@@ -1,50 +1,71 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { Worker } from "bullmq";
-import cloudinary from "../config/cloudinary.js"
+import IORedis from "ioredis";
+import cloudinary from "../config/cloudinary.js";
 import Place from "../models/Accomodation.model.js"
+import connectDB from "../config/db.js";
 
-import fs from "fs"
-import IORedis from "ioredis"
-//redis config for localhost 
+//connectt to db
+await connectDB();
+
+
+//Correct Redis connection for BullMQ
 const connection = new IORedis({
-    host:"redis",  //redis local host
-    port:6379,
-    maxRetriesPerRequest:null,         //redis default port 
+    host: "redis",
+    port: 6379,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+});
 
-})
+//upload buffer 
+const uploadBuffer = (buffer)=>{
+    return new Promise((resolve,reject)=>{
+        const stream = cloudinary.uploader.upload_stream(
+            {folder:"places"},
+            (err,result)=>{
+                if (err) reject(err);
+                else resolve(result)
+            }
+        );
+        stream.end(buffer);
+    })
+}
 
 
+new Worker(
+  "placeImageQueue",
+  async (job) => {
+    try {
+        console.log("Processing job:", job.id);
 
-export const placeImageWorker = new Worker(
-    "placeImageQueue",
-    async(job)=>{
-
-        const {placeId,files}=job.data;
+        const { placeId, files } = job.data;
 
         const uploadedImages = [];
 
-        for (const filePath of files){
-            const result = await cloudinary.uploader.upload(filePath,{
-                folder:"places",
-            });
+        for (const file of files) {
+            console.log("Uploading image...");
+
+            const result = await uploadBuffer(
+                Buffer.from(file.buffer, "base64")
+            );
 
             uploadedImages.push({
-                url:result.secure_url,
-                public_id:result.public_id,
+                url: result.secure_url,
+                public_id: result.public_id,
             });
-
-            //remove local temp file 
-            fs.unlink(filePath)
-
         }
 
-        //push images to place 
-        await Place.findByIdAndUpdate(placeId,{
-            $push:{
-                images:{ $each:uploadedImages}
-            }
+        await Place.findByIdAndUpdate(placeId, {
+            $push: { images: { $each: uploadedImages } },
         });
-    },
-    {
-        connection
+
+        console.log("Images uploaded & DB updated");
+
+    } catch (error) {
+        console.error("Worker error:", error);
     }
-)
+  },
+  { connection }
+);
+console.log("Place image worker started")

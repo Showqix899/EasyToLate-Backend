@@ -1,9 +1,8 @@
-import Place from "../models/Accomodation.model.js"
-import {placeImageQueue} from "../queue/placeImageQueue.js"
-//create a place instance 
-export const createPlace = async (req,res)=>{
+import Place from "../models/Accomodation.model.js";
+import { placeImageQueue} from "../queue/placeImageQueue.js";
 
-
+//create place
+export const creatPlace = async (req,res)=>{
     try{
         const {
             title,
@@ -23,58 +22,68 @@ export const createPlace = async (req,res)=>{
             availableTo,
             houseRules,
             cancelationPolicy,
-            } = req.body;
+        } = req.body;
 
-
-        //files from multer (stored locally / temp)
         const files = req.files || [];
-        
-        if (files.length > 20){
+
+        if (files.length > 10) {
             return res.status(400).json({
-                message:"maximum 20 images allowed"
+                message: "Maximum 10 images allowed",
             });
-        };
+        }
 
-        //create place first (without images)
-        // Create place first (without images)
+
+        // Create place first
         const place = await Place.create({
-        owner: req.user._id,
-        title,
-        description,
-        category,
-        propertyType,
-        location,
-        pricing_style,
-        price,
-        serviceFee,
-        maxOccupency,
-        bedrooms,
-        beds,
-        bathrooms,
-        kitchen,
-        availableFrom,
-        availableTo,
-        houseRules,
-        cancelationPolicy,
-        images: [], // will be updated by worker
+            owner: req.user._id,
+            title,
+            description,
+            category,
+            propertyType,
+            location,
+            pricing_style,
+            price,
+            serviceFee,
+            maxOccupency,
+            bedrooms,
+            beds,
+            bathrooms,
+            kitchen,
+            availableFrom,
+            availableTo,
+            houseRules,
+            cancelationPolicy,
+            images: [],
         });
-
-
-        //send images to background worker 
-        if (files.length>0){
-            await placeImageQueue.add("uploadPlaceImages",{
-                placeID:place._id,
-                files:files.map((f)=>f.path), //local path
-            })
+        
+        console.log("FILES LENGTH",files.length)
+        // Send images to queue
+        if (files.length > 0) {
+            console.log("sending job to queue")
+            await placeImageQueue.add(
+                "uploadPlaceImages", 
+                {
+                placeId: place._id,
+                files: files.map((file) => ({
+                    buffer: file.buffer.toString("base64"),
+                    mimetype: file.mimetype,
+                    originalname: file.originalname,
+                })),
+            });
         }
 
         res.status(201).json({
-            message:"Your Data Have Been Submitted  successfully"
-        })
+            message:
+                "Place created successfully. Images uploading in background.",
+            placeId: place._id,
+        });
+
+
     }catch(error){
+
         res.status(500).json({
-            message:"Failed to create place",
-            error:error.message,
-        })
+            message: "Failed to create place",
+            error: error.message,
+        });
     }
 }
