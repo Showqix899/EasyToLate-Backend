@@ -3,6 +3,7 @@ import Place from "../models/Accomodation.model.js";
 import { placeImageQueue } from "../queue/placeImageQueue.js";
 import { placeImageRemoveQueue } from "../queue/placeImageRemoveQueue.js";
 import cloudinary from "../config/cloudinary.js"
+import { getCache, setCache, deleteCacheByPattern } from "../utils/cache.js"
 //create place
 export const creatPlace = async (req, res) => {
     try {
@@ -138,6 +139,31 @@ export const searchPlaces = async (req, res) => {
 
         } = req.query;
 
+        // normalize query object
+        const sortedQuery = Object.keys(req.query)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = req.query[key];
+                return acc;
+            }, {});
+
+        // unique stable cache key
+        const cachekey = `placeSearch:${JSON.stringify(sortedQuery)}`;
+
+
+        //check cachedData
+        const cachedData = await getCache(cachekey)
+
+        //check if data available in cache
+        if (cachedData) {
+            console.log("from redid cache")
+            return res.status(200).json({
+                cachedData
+            });
+        }
+
+
+
 
         //build a dynamic filter object
         const filter = {
@@ -204,14 +230,18 @@ export const searchPlaces = async (req, res) => {
 
         const total = await Place.countDocuments(filter);
 
+        const response = {
+            total: total,
+            page: Number(page),
+            totalPages: Math.ceil(total / limit),
+            data: places
+        }
+
+        //set to cache 
+        await setCache(cachekey, response, 300)
+
         if (places) {
-            return res.status(200).json({
-                success: true,
-                total,
-                page: Number(page),
-                totalPages: Math.ceil(total / limit),
-                data: places
-            })
+            return res.status(200).json(response)
         }
 
         return res.status(404).json({
@@ -332,7 +362,7 @@ export const updatePlace = async (req, res) => {
             await placeImageRemoveQueue.add(
                 "removingPlaceImages",
                 {
-                    imagesToRemove:imagesToRemove
+                    imagesToRemove: imagesToRemove
                 }
             );
 
@@ -367,6 +397,9 @@ export const updatePlace = async (req, res) => {
             console.log("New images sent to queue");
         }
 
+        //clearCache
+        await deleteCacheByPattern("placeSearch:*")
+
         res.status(200).json({
             success: true,
             message: "Place updated successfully",
@@ -382,3 +415,92 @@ export const updatePlace = async (req, res) => {
         });
     }
 };
+
+
+
+
+//user place deletation
+export const userPlaceDeletion = async (req,res)=>{
+    try {
+        const {place_id} = req.params;
+
+        if (!place_id){
+            return res.status(404).json({
+                message:"invalid place id"
+            })
+        }
+
+        //database query
+        const place = await Place.findById(place_id)
+
+        if (!place){
+            return res.status(404).json({
+                message:"place not found"
+            })
+        }
+
+        if (req.user._id.toString() !== place.owner.toString()){
+            
+            return res.status(403).json({
+                message:"you are not authorized to perform this action"
+            })
+        }
+
+
+        //delete 
+        await Place.deleteOne()
+
+        return res.status(200).json({
+                message:"place deleted successfully"
+        })
+        
+    } catch (error) {
+        return res.status(500).json({
+                message:error.message
+            })
+    }
+}
+
+
+//user place deletation
+export const adminPlaceDeletion = async (req,res)=>{
+    try {
+        const {place_id} = req.params;
+
+        if (!place_id){
+            return res.status(404).json({
+                message:"invalid place id"
+            })
+        }
+
+        //database query
+        const place = await Place.findById(place_id)
+
+        if (!place){
+            return res.status(404).json({
+                message:"place not found"
+            })
+        }
+
+       
+        if (req.user.role === "admin"){
+            
+            return res.status(403).json({
+                message:"you are not authorized to perform this action"
+            })
+        }
+
+
+        //hard delete the Place
+        await Place.deleteOne()
+
+        return res.status(200).json({
+                message:"place deleted successfully"
+        })
+        
+    } catch (error) {
+        return res.status(500).json({
+                message:error.message
+            })
+    }
+}

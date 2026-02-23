@@ -4,6 +4,7 @@ import streamifier from "streamifier"
 import jwt from "jsonwebtoken"
 
 import User from "../models/User.model.js"
+import Place from "../models/Accomodation.model.js"
 import AdminStaffTokenRecorde from "../models/AdminStaffToken.model.js"
 
 import { sendVerificationEmail,sendPasswordResetLinkEmail } from "../services/email.service.js"
@@ -566,6 +567,9 @@ export const adminUserDelation = async (req,res)=>{
 
         await user.deleteOne()
 
+        //clear cache 
+        await deleteCacheByPattern("adminUsers:*")
+
         return res.json({
             message:"user deleted successfully"
         })
@@ -593,11 +597,15 @@ export const userDelation = async(req,res)=>{
         const user = await User.findById(id)
 
         //check if the user is valid to do delation 
+        if (req.user._id.toString() !== user._id.toString()){
 
-        if (req.user._id !== user._id){
-            return res.json({
-                message:"your are not authorized to do this operation"
-            })
+            if (req.user.role !== "admin"){
+                
+                return res.json({
+                    message:"your are not authorized to do this operation"
+                })
+            }
+
         }
 
         //if user not found
@@ -607,8 +615,18 @@ export const userDelation = async(req,res)=>{
             })
         }
 
+        //hard delete all the place associated with this user
+        try {
+            await Place.deleteMany({
+            owner:user._id
+        })
+        } catch (error) {
+            console.log("error",error.message)
+        }
         //delete user 
         await user.deleteOne()
+
+        
 
 
         //clear cache 
@@ -706,9 +724,17 @@ export const userSearchFilter = async (req,res)=>{
             limit = 10,
         } = req.query;
 
+        // normalize query object
+        const sortedQuery = Object.keys(req.query)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = req.query[key];
+                return acc;
+            }, {});
+
 
         //unique cache key
-        const cacheKey = `adminUsers:${JSON.stringify(req.query)}`;
+        const cacheKey = `adminUsers:${JSON.stringify(sortedQuery)}`;
 
         //check cache 
         const cachedData = await getCache(cacheKey)

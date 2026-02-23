@@ -1,5 +1,9 @@
 import express from "express";
-import { creatPlace,searchPlaces,getPlace,updatePlace} from "../controllers/place.controller.js";
+import { 
+    creatPlace,searchPlaces,getPlace,
+    updatePlace,userPlaceDeletion,
+    
+} from "../controllers/place.controller.js";
 import {protect,adminAccess} from "../middlewares/auth.mddleware.js"
 import { uploadPlaceImagesMiddleware } from "../middlewares/uploadPlaceImages.middleware.js";
 
@@ -22,6 +26,9 @@ router.get("/get/:place_id",protect,getPlace);
 
 //update place 
 router.put("/update/:id",protect,uploadPlaceImagesMiddleware,updatePlace);
+
+//delete place 
+router.delete("/delete/:place_id",protect,userPlaceDeletion);
 
 
 
