@@ -1,5 +1,5 @@
 import express from "express";
-import { creatPlace,searchPlaces,getPlace} from "../controllers/place.controller.js";
+import { creatPlace,searchPlaces,getPlace,updatePlace} from "../controllers/place.controller.js";
 import {protect,adminAccess} from "../middlewares/auth.mddleware.js"
 import { uploadPlaceImagesMiddleware } from "../middlewares/uploadPlaceImages.middleware.js";
 
@@ -18,7 +18,10 @@ router.post(
 router.get("/all",searchPlaces);
 
 //get a place route 
-router.get("/get",protect,getPlace)
+router.get("/get/:place_id",protect,getPlace);
+
+//update place 
+router.put("/update/:id",protect,uploadPlaceImagesMiddleware,updatePlace);
 
 
 

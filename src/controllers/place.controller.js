@@ -1,7 +1,8 @@
 import { objectToFlatArray } from "bullmq";
 import Place from "../models/Accomodation.model.js";
 import { placeImageQueue } from "../queue/placeImageQueue.js";
-
+import { placeImageRemoveQueue } from "../queue/placeImageRemoveQueue.js";
+import cloudinary from "../config/cloudinary.js"
 //create place
 export const creatPlace = async (req, res) => {
     try {
@@ -230,7 +231,7 @@ export const searchPlaces = async (req, res) => {
 export const getPlace = async (req, res) => {
     try {
         //get place id from query
-        const { place_id } = req.query;
+        const { place_id } = req.params;
 
         //basic validation
         if (!place_id) {
@@ -266,44 +267,96 @@ export const updatePlace = async (req, res) => {
     try {
         const { id } = req.params;
 
+        console.log(`place id:${id}`)
         const place = await Place.findById(id);
 
         if (!place) {
             return res.status(404).json({
-                success: false,
                 message: "Place not found",
             });
         }
 
+        /* ==============================
+           1️⃣ UPDATE NORMAL FIELDS
+        ============================== */
 
-        //update normal fields
-        const { removeImages, ...updateFields } = req.body;
+        const { removeImages, location, ...updateFields } = req.body;
 
+
+
+
+        // Update simple fields
         Object.keys(updateFields).forEach((key) => {
-            place[key] = updatedFields[key];
+            place[key] = updateFields[key];
         });
 
-        //remove images
+        if (location) {
+            let parsedLocation = location;
+
+            // If location comes as string (form-data), parse it
+            if (typeof location === "string") {
+                try {
+                    parsedLocation = JSON.parse(location);
+                } catch (err) {
+                    console.log("Invalid location JSON");
+                }
+            }
+
+            Object.keys(parsedLocation).forEach((key) => {
+                place.location[key] = parsedLocation[key];
+            });
+
+            // 👇 Important: tell mongoose nested object changed
+            place.markModified("location");
+
+            console.log("location updated:", parsedLocation);
+        }
+
+
+        /* ==============================
+           2️⃣ REMOVE IMAGES
+           Expecting public_id array
+        ============================== */
 
         if (removeImages && removeImages.length > 0) {
             const imagesToRemove = Array.isArray(removeImages)
                 ? removeImages
-                : [removeImages];
+                : JSON.parse(removeImages);
 
-            //remove from cloudinary
-            for (const publicId of imagesToRemove) {
-                await cloudinary.uploader.destroy(publicId);
-            }
+            // // Remove from Cloudinary
+            // for (const publicId of imagesToRemove) {
+            //     await cloudinary.uploader.destroy(publicId);
+            // }
 
-            //remove from database
+            //job adding to Queue
+            await placeImageRemoveQueue.add(
+                "removingPlaceImages",
+                {
+                    imagesToRemove:imagesToRemove
+                }
+            );
+
+            // Remove from MongoDB
             place.images = place.images.filter(
                 (img) => !imagesToRemove.includes(img.public_id)
-            )
+            );
         }
 
         await place.save();
 
+        /* ==============================
+           3️⃣ ADD NEW IMAGES
+        ============================== */
+
         if (req.files && req.files.length > 0) {
+            // Max 20 images rule
+            if (place.images.length + req.files.length > 20) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Maximum 20 images allowed",
+                });
+            }
+
             await placeImageQueue.add("uploadPlaceImages", {
                 placeId: place._id,
                 files: req.files.map((file) => ({
@@ -320,13 +373,12 @@ export const updatePlace = async (req, res) => {
             data: place,
         });
 
-
     } catch (error) {
         console.error(error);
         res.status(500).json({
-        success: false,
-        message: "Update failed",
-        error: error.message,
+            success: false,
+            message: "Update failed",
+            error: error.message,
         });
     }
-}
+};

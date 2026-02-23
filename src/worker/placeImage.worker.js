@@ -10,7 +10,7 @@ import connectDB from "../config/db.js";
 await connectDB();
 
 
-//Correct Redis connection for BullMQ
+//Redis connection for BullMQ
 const connection = new IORedis({
     host: "redis",
     port: 6379,
