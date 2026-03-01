@@ -271,7 +271,7 @@ export const getPlace = async (req, res) => {
         }
 
         //database query
-        const place = await Place.findById({ "_id": place_id });
+        const place = await Place.findById({ "_id": place_id }).populate("owner","username email phone profile_pic");
 
         if (!place) {
             return res.json({
@@ -279,8 +279,11 @@ export const getPlace = async (req, res) => {
             })
         }
 
-        res.staus(200).json({
-            place: place
+        //get owner info
+
+
+        res.status(200).json({
+            place
         })
 
 
