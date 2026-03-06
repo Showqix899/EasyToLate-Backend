@@ -30,6 +30,7 @@ const bookingSchema = new mongoose.Schema({
     },
     country:{
         type:String,
+        enum:["bangladesh"],
         required:true,
     },
     place_id:{
@@ -43,6 +44,54 @@ const bookingSchema = new mongoose.Schema({
         ref:"User",
         required:true,
     },
+    place_owner_username:{
+        type:String,
+        required:true,
+    },
+    place_owner_email:{
+        type:String,
+        required:true,
+    },
+    place_owner_phone:{
+        type:String,
+        required:true,
+    },
+    place_rent:{
+        type:Number,
+        required:true,
+        min:0,
+        max:999999
+    },
+    pricing_style:{
+        type:String,
+        enum:["per_day","per_night","per_week","per_month"],
+        required:true,
+    },
+    serviceFee:{
+        type:Number,
+        default:0
+    },
+    maxOccupency:{
+        type:Number,
+        required:true,
+    },
+    bedrooms:Number,
+    beds:Number,
+    bathrooms:Number,
+    kitchen:Number,
+    availableFrom:{
+        type:Date,
+        required:true,
+    },
+
+    availableTo:Date,
+
+    houseRules:[String],
+
+    cancelationPolicy:{
+        type:String,
+        default:"flexible"
+    },
     isConfirmed:{
         type:Boolean,
         default:false,
@@ -50,7 +99,12 @@ const bookingSchema = new mongoose.Schema({
     isPaid:{
         type:Boolean,
         default:false,
-    }
+    },
+    tran_id:{
+        type:String,
+        required:true,
+        unique:true
+    },
 
 
 },{
