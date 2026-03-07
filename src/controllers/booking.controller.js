@@ -4,7 +4,7 @@ import User from "../models/User.model.js"
 
 import SSLCommerzPayment from "sslcommerz-lts"
 import { v4 as uuidv4 } from "uuid"
-
+import axios from "axios"
 
 
 // Create Payment Session
@@ -21,6 +21,8 @@ export const bookingPlacing = async (req, res) => {
         } = req.body
 
         const { place_id } = req.params;
+
+        
 
         if (!place_id) {
             return res.status(400).json({
@@ -95,11 +97,11 @@ export const bookingPlacing = async (req, res) => {
             cus_phone: phone,
 
             //shipping info
-            ship_name : name,
-            ship_add1:address,
-            ship_city:city,
-            ship_country:country,
-            ship_postcode:3000,
+            ship_name: name,
+            ship_add1: address,
+            ship_city: city,
+            ship_country: country,
+            ship_postcode: 3000,
 
         }
 
@@ -111,23 +113,45 @@ export const bookingPlacing = async (req, res) => {
 
         const apiResponse = await sslcz.init(payment_data)
 
-        
+
         const GatewayPageURL = apiResponse.GatewayPageURL
 
-        // store temporary booking info in session or cache
-        req.session.bookingData = {
-            ...data,
+        //boking data
+        const bookingData = {
+            name,
+            email,
+            phone,
+            address,
+            city,
+            country:country.toLowerCase(),
+
             place_id: place._id,
             place_owner: owner._id,
             place_owner_username: owner.username,
             place_owner_email: owner.email,
             place_owner_phone: owner.phone,
+
             place_rent: place.price,
             pricing_style: place.pricing_style,
             serviceFee: place.serviceFee,
             maxOccupency: place.maxOccupency,
-            tran_id: tran_id,
+
+            availableFrom: place.availableFrom,
+            cancelationPolicy: place.cancelationPolicy,
+
+            tran_id
         }
+
+        if (place.bedrooms) bookingData.bedrooms = place.bedrooms
+        if (place.beds) bookingData.beds = place.beds
+        if (place.bathrooms) bookingData.bathrooms = place.bathrooms
+        if (place.kitchen) bookingData.kitchen = place.kitchen
+        if (place.availableTo) bookingData.availableTo = place.availableTo
+        if (place.houseRules) bookingData.houseRules = place.houseRules
+
+
+        //creating booking instance
+        const booking = await Booking.create(bookingData)
 
         res.json({
             payment_url: GatewayPageURL
@@ -140,3 +164,71 @@ export const bookingPlacing = async (req, res) => {
         })
     }
 }
+
+//payment success
+export const paymentSuccess = async (req, res) => {
+    try {
+
+        const { val_id, tran_id } = req.body
+
+        console.log("SSLCommerz Response:", req.body)
+
+        // basic validation
+        if (!val_id || !tran_id) {
+            return res.status(400).json({
+                message: "val_id or tran_id missing"
+            })
+        }
+
+        const store_id = process.env.STORE_ID
+        const store_passwd = process.env.STORE_PASSWORD
+
+        // validation url
+        const validation_url =
+            `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${val_id}&store_id=${store_id}&store_passwd=${store_passwd}&format=json`
+
+        const validationResponse = await axios.get(validation_url)
+
+        const paymentData = validationResponse.data
+
+        if (paymentData.status !== "VALID") {
+            return res.status(400).json({
+                message: "payment validation failed"
+            })
+        }
+
+        // find booking using tran_id
+        const booking = await Booking.findOne({ tran_id })
+
+        if (!booking) {
+            return res.status(404).json({
+                message: "booking not found"
+            })
+        }
+
+        // update booking payment status
+        booking.isPaid = true
+        booking.isConfirmed = true
+
+        await booking.save()
+
+        // update place isAvailabe == true
+        const place = await Place.findById(booking.place_id)
+        place.isAvailable=false
+
+        await place.save()
+
+        return res.status(200).json({
+            message: "Payment successful",
+            booking
+        })
+
+    } catch (error) {
+
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+//payment cancelation

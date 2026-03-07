@@ -1,7 +1,8 @@
 import express from "express";
 
 import {
-    bookingPlacing
+    bookingPlacing,
+    paymentSuccess,
 } from "../controllers/booking.controller.js"
 
 
@@ -10,11 +11,7 @@ const router = express.Router()
 
 router.post("/create/:place_id",bookingPlacing)
 
-router.post("/success",(req,res)=>{
-    res.send({
-        message:"payment success"
-    })
-})
+router.post("/success",paymentSuccess)
 
 router.get("/fail",(req,res)=>{
     res.send({

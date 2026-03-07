@@ -132,6 +132,11 @@ const placeSchema = new mongoose.Schema({
         default:false,
     },
 
+    isAvailable:{
+        type:Boolean,
+        default:true,
+    }
+
 
 
 },{

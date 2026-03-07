@@ -12,6 +12,7 @@ const app = express(); //express app
 
 app.use(cors())
 app.use(express.json()) //json parser
+app.use(express.urlencoded({ extended: true }))
 
 app.use(
     session({
