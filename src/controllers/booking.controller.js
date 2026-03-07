@@ -209,6 +209,7 @@ export const paymentSuccess = async (req, res) => {
         // update booking payment status
         booking.isPaid = true
         booking.isConfirmed = true
+        booking.status = "success"
 
         await booking.save()
 
@@ -232,3 +233,37 @@ export const paymentSuccess = async (req, res) => {
 }
 
 //payment cancelation
+export const paymentfail = async (req,res)=>{
+    try {
+        
+        const {tran_id}=req.body;
+
+        if (!tran_id){
+            return res.status(400).json({
+                message:"no transection id found"
+            })
+        }
+
+
+        //booking database query
+        const booking = await Booking.findOne({tran_id})
+
+        if (!booking){
+            return res.status(404).json({
+                message:"booking not found"
+            })
+        }
+
+        booking.status = "failed"
+        await booking.save()
+
+        return res.status(200).json({
+            message:"payment failed"
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message:error.message,
+            
+        })
+    }
+}
