@@ -22,7 +22,7 @@ export const bookingPlacing = async (req, res) => {
 
         const { place_id } = req.params;
 
-        
+
 
         if (!place_id) {
             return res.status(400).json({
@@ -116,6 +116,7 @@ export const bookingPlacing = async (req, res) => {
 
         const GatewayPageURL = apiResponse.GatewayPageURL
 
+
         //boking data
         const bookingData = {
             name,
@@ -123,7 +124,7 @@ export const bookingPlacing = async (req, res) => {
             phone,
             address,
             city,
-            country:country.toLowerCase(),
+            country: country.toLowerCase(),
 
             place_id: place._id,
             place_owner: owner._id,
@@ -189,7 +190,9 @@ export const paymentSuccess = async (req, res) => {
 
         const validationResponse = await axios.get(validation_url)
 
+       
         const paymentData = validationResponse.data
+
 
         if (paymentData.status !== "VALID") {
             return res.status(400).json({
@@ -211,11 +214,13 @@ export const paymentSuccess = async (req, res) => {
         booking.isConfirmed = true
         booking.status = "success"
 
+        booking.bank_tran_id = paymentData.bank_tran_id
+        booking.val_id = paymentData.val_id
         await booking.save()
 
         // update place isAvailabe == true
         const place = await Place.findById(booking.place_id)
-        place.isAvailable=false
+        place.isAvailable = true
 
         await place.save()
 
@@ -233,37 +238,181 @@ export const paymentSuccess = async (req, res) => {
 }
 
 //payment cancelation
-export const paymentfail = async (req,res)=>{
+export const paymentfail = async (req, res) => {
     try {
-        
-        const {tran_id}=req.body;
 
-        if (!tran_id){
+        const { tran_id } = req.body;
+
+        if (!tran_id) {
             return res.status(400).json({
-                message:"no transection id found"
+                message: "no transection id found"
             })
         }
 
 
         //booking database query
-        const booking = await Booking.findOne({tran_id})
+        const booking = await Booking.findOne({ tran_id })
 
-        if (!booking){
+        if (!booking) {
             return res.status(404).json({
-                message:"booking not found"
+                message: "booking not found"
             })
         }
 
         booking.status = "failed"
         await booking.save()
 
+
         return res.status(200).json({
-            message:"payment failed"
+            message: "payment failed"
         })
     } catch (error) {
         return res.status(500).json({
-            message:error.message,
-            
+            message: error.message,
+
         })
     }
 }
+
+//payment cancelation 
+export const cancelPayment = async (req, res) => {
+    try {
+
+        const { booking_id } = req.params
+
+        // Find booking
+        const booking = await Booking.findById(booking_id)
+
+        if (!booking) {
+            return res.status(404).json({
+                message: "booking not found"
+            })
+        }
+
+        // Find place
+        const place = await Place.findById(booking.place_id)
+
+        if (!place) {
+            return res.status(404).json({
+                message: "place not found"
+            })
+        }
+
+        // Prevent double cancel
+        if (booking.status === "canceled") {
+            return res.status(400).json({
+                message: "booking already canceled"
+            })
+        }
+
+        // =============================
+        // CASE 1: Booking NOT paid
+        // =============================
+
+        if (!booking.isPaid) {
+
+            booking.status = "canceled"
+            booking.isConfirmed = false
+
+            await booking.save()
+
+            place.isAvailable = true
+            await place.save()
+
+            return res.json({
+                message: "booking cancelled successfully"
+            })
+        }
+
+        // =============================
+        // CASE 2: Booking Paid → Refund
+        // =============================
+
+        const bookingDate = new Date(booking.createdAt)
+        const now = new Date()
+
+        const diffDays = Math.floor(
+            (now - bookingDate) / (1000 * 60 * 60 * 24)
+        )
+
+        // Check refund window (5 days)
+        if (diffDays > 5) {
+            return res.status(400).json({
+                message: "refund period expired"
+            })
+        }
+
+        // Prevent double refund
+        if (booking.refundStatus === "refunded") {
+            return res.status(400).json({
+                message: "refund already processed"
+            })
+        }
+
+        // bank transaction required for refund
+        if (!booking.bank_tran_id) {
+            return res.status(400).json({
+                message: "bank transaction id missing"
+            })
+        }
+
+        // =============================
+        // Calculate refund amount
+        // =============================
+
+        const deductedAmount = Math.floor(
+            booking.place_rent - (booking.place_rent * 0.05)
+        )
+
+        // =============================
+        // SSLCommerz Refund API
+        // =============================
+
+        const refund_url =
+            `https://sandbox.sslcommerz.com/validator/api/merchantTransIDvalidationAPI.php?bank_tran_id=${booking.bank_tran_id}&store_id=${process.env.STORE_ID}&store_passwd=${process.env.STORE_PASSWORD}&refund_amount=${deductedAmount}&refund_remarks=booking_cancel&format=json`
+
+        const refundResponse = await axios.get(refund_url)
+
+        const refundData = refundResponse.data
+
+        console.log("Refund response:", refundData)
+
+        if (refundData.status !== "success") {
+            return res.status(400).json({
+                message: "refund failed",
+                data: refundData
+            })
+        }
+
+        // =============================
+        // Update booking
+        // =============================
+
+        booking.status = "canceled"
+        booking.refundStatus = "refunded"
+        booking.refundAmount = deductedAmount
+
+        await booking.save()
+
+        // =============================
+        // Restore place availability
+        // =============================
+
+        place.isAvailable = true
+        await place.save()
+
+        return res.json({
+            message: "booking cancelled and refund processed",
+            refundAmount: deductedAmount
+        })
+
+    } catch (error) {
+
+        console.log("Cancel Payment Error:", error)
+
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+

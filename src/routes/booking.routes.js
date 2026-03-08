@@ -4,6 +4,7 @@ import {
     bookingPlacing,
     paymentSuccess,
     paymentfail,
+    cancelPayment
 } from "../controllers/booking.controller.js"
 
 
@@ -16,11 +17,7 @@ router.post("/success",paymentSuccess)
 
 router.post("/fail",paymentfail)
 
-router.get("/cancel",(req,res)=>{
-    res.send({
-        message:"payment cancel"
-    })
-})
+router.get("/cancel/:booking_id",cancelPayment)
 
 
 export default router;
