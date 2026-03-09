@@ -2,6 +2,9 @@ import Booking from "../models/booking.model.js"
 import Place from "../models/Accomodation.model.js"
 import User from "../models/User.model.js"
 
+import { getCache, setCache, deleteCacheByPattern } from "../utils/cache.js"
+
+
 import SSLCommerzPayment from "sslcommerz-lts"
 import { v4 as uuidv4 } from "uuid"
 import axios from "axios"
@@ -154,6 +157,9 @@ export const bookingPlacing = async (req, res) => {
         //creating booking instance
         const booking = await Booking.create(bookingData)
 
+        //delete cache 
+        await deleteCacheByPattern(`${user.email}:*`)
+
         res.json({
             payment_url: GatewayPageURL
         })
@@ -190,7 +196,7 @@ export const paymentSuccess = async (req, res) => {
 
         const validationResponse = await axios.get(validation_url)
 
-       
+
         const paymentData = validationResponse.data
 
 
@@ -416,3 +422,193 @@ export const cancelPayment = async (req, res) => {
     }
 }
 
+//user booking history 
+export const userBookingHistory = async (req, res) => {
+    try {
+        const user = req.user
+        const { page = 1,
+            limit = 10,
+            email,
+            phone,
+            city,
+            country,
+            place_owner_username,
+            place_owner_email,
+            place_owner_phone,
+            sortBy = "createdAt",
+            order = "desc",
+        } = req.query
+
+
+        //normalize query 
+        const sortedQuery = Object.keys(req.query)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = req.query[key];
+                return acc;
+            }, {})
+
+
+
+        //checking cache 
+        const cacheKey = `${user.email}:${JSON.stringify(sortedQuery)}`
+
+        const cachedData = await getCache(cacheKey)
+
+        if (cachedData) {
+
+            return res.status(200).json({
+
+                bookings: cachedData
+            })
+        }
+
+        //build a dynamic filter object 
+        const filter = {}
+
+        if (email) {
+            filter.email = email
+        }
+        if (phone) {
+            filter.phone = phone
+        }
+        if (city) filter.city = city
+        if (country) filter.country = city
+        if (place_owner_email) filter.place_owner_email
+        if (place_owner_phone) filter.place_ownner_phone
+        if (place_owner_username) filter.place_owner_username
+
+
+        //pagination
+        const skip = (page - 1) * limit;
+
+        //sorting
+        const sortOption = {
+            [sortBy]: order === "asc" ? 1 : -1,
+        };
+
+        //database query 
+        const bookings = await Booking.find(filter)
+            .sort(sortOption)
+            .skip(skip)
+            .limit(Number(limit))
+
+        if (!bookings) {
+            return res.status(404).json({
+                message: "No booking found"
+            })
+        }
+
+        const response = {
+            page: Number(page),
+            data: bookings
+        }
+
+        //set cache
+        await setCache(cacheKey, response, 300)
+
+        return res.status(200).json({
+            bookings: response
+        })
+    } catch (error) {
+
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+//admin user booking history 
+export const adminUserBookingHistory = async (req, res) => {
+    try {
+        const { page = 1,
+            limit = 10,
+            email,
+            phone,
+            city,
+            country,
+            place_owner_username,
+            place_owner_email,
+            place_owner_phone,
+            sortBy = "createdAt",
+            order = "desc",
+        } = req.query
+
+        const user = req.user
+
+        //normalize query 
+        const sortedQuery = Object.keys(req.query)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = req.query[key];
+                return acc;
+            }, {})
+
+
+
+        //checking cache 
+        const cacheKey = `${user.email}:${JSON.stringify(sortedQuery)}`
+
+        const cachedData = await getCache(cacheKey)
+
+        if (cachedData) {
+
+            return res.status(200).json({
+
+                bookings: cachedData
+            })
+        }
+
+        //build a dynamic filter object 
+        const filter = {}
+
+        if (email) {
+            filter.email = email
+        }
+        if (phone) {
+            filter.phone = phone
+        }
+        if (city) filter.city = city
+        if (country) filter.country = city
+        if (place_owner_email) filter.place_owner_email
+        if (place_owner_phone) filter.place_ownner_phone
+        if (place_owner_username) filter.place_owner_username
+
+
+        //pagination
+        const skip = (page - 1) * limit;
+
+        //sorting
+        const sortOption = {
+            [sortBy]: order === "asc" ? 1 : -1,
+        };
+
+        //database query 
+        const bookings = await Booking.find(filter)
+            .sort(sortOption)
+            .skip(skip)
+            .limit(Number(limit))
+
+        if (!bookings) {
+            return res.status(404).json({
+                message: "No booking found"
+            })
+        }
+
+        const response = {
+            page: Number(page),
+            data: bookings
+        }
+
+        //set cache
+        await setCache(cacheKey, response, 300)
+
+        return res.status(200).json({
+            bookings: response
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}

@@ -59,7 +59,6 @@ export const creatPlace = async (req, res) => {
             images: [],
         });
 
-        console.log("FILES LENGTH", files.length)
         // Send images to queue
         if (files.length > 0) {
             console.log("sending job to queue")
@@ -156,7 +155,6 @@ export const searchPlaces = async (req, res) => {
 
         //check if data available in cache
         if (cachedData) {
-            console.log("from redid cache")
             return res.status(200).json({
                 cachedData
             });
