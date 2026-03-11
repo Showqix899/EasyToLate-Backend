@@ -7,6 +7,7 @@ import session from "express-session"
 import authRoutes from "./routes/auth.routes.js"
 import placeRoutes from "./routes/place.routes.js"
 import bookingRoutes from "./routes/booking.routes.js"
+import subscriptionRoutes from "./routes/subscription.routes.js"
 
 const app = express(); //express app
 
@@ -33,6 +34,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth",authRoutes)
 app.use("/api/places",placeRoutes)
 app.use("/api/payment",bookingRoutes)
+app.use("/api/subscription",subscriptionRoutes)
 
 //******************************** */
 

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { stringify } from "uuid";
 
 const userSchema = new mongoose.Schema(
   {
@@ -35,7 +36,7 @@ const userSchema = new mongoose.Schema(
     // role based access control
     role: {
       type: String,
-      enum: ["admin", "staff", "user"],
+      enum: ["admin", "staff", "user","host"],
       default: "user",
       select: true
     },
@@ -67,9 +68,10 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken:String,
     resetPasswordExpires:Date,
-    
-
-    
+    isSubscribed:{
+      type:Boolean,
+      default:false,
+    },
 
   },
   { timestamps: true }
