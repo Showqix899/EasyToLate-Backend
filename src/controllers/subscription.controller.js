@@ -1,4 +1,5 @@
 import Subscription from "../models/Subscription.model.js"
+import User from "../models/User.model.js"
 import axios from "axios"
 import SSLCommerzPayment from "sslcommerz-lts"
 import { v4 as uuidv4 } from "uuid"
@@ -50,6 +51,9 @@ export const createSubscription = async (req,res)=>{
             amount = Number(process.env.YEARLY_SUBSCRIPTION_AMOUNT)
         }
 
+        //generating a transection id
+        const tran_id = uuidv4()
+
         const data={
             owner:user._id,
             owner_username:user.username,
@@ -58,10 +62,8 @@ export const createSubscription = async (req,res)=>{
             subscriptionStyle:subscription_style,
             subscriptionStartingDate:currentDate,
             subscriptionEndDate:endDate,
+            tran_id:tran_id,
         }
-
-        //generating a transection id
-        const tran_id = uuidv4()
 
         const paymentData = {
 
@@ -119,5 +121,118 @@ export const createSubscription = async (req,res)=>{
             message: error.message,
             stack:error.stack
         })
+    }
+}
+
+//subscription success transection
+export const subscriptionSuccess = async (req,res)=>{
+    try {
+        
+        const {val_id,tran_id} = req.body;
+
+        //basic validation 
+        if((!val_id || !tran_id)){
+            return res.status(404).json({
+                message:"validation id or transection id missing"
+            })
+        }
+
+        const store_id = process.env.STORE_ID
+        const store_passwd = process.env.STORE_PASSWORD
+
+        // validation url
+        const validation_url =
+            `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${val_id}&store_id=${store_id}&store_passwd=${store_passwd}&format=json`
+        
+        const validationResponse = await axios.get(validation_url)
+
+        const paymentData = validationResponse.data
+
+        if (paymentData.status !== "VALID"){
+            return re.status(400).json({
+                message:"payment validation failed"
+            })
+        }
+
+        const subscription = await Subscription.findOne({tran_id})
+
+        
+
+        if (!subscription){
+            return res.status(404).json({
+                message:"booking not found"
+            })
+        }
+
+        const user = await User.findOne({
+            _id:subscription.owner
+        })
+
+        if(!user){
+            return res.status(404).json({
+                message:"No associated user found"
+            })
+        }
+
+        //update subscription instance
+        subscription.isPaid=true
+        subscription.val_id=val_id
+        subscription.bank_tran_id=paymentData.bank_tran_id
+
+        //saving subscription data
+        await subscription.save()
+
+        //saving user instance
+        user.isSubscribed=true
+        await user.save()
+
+        return res.status(200).json({
+            message: "You subscribed to EasyToLet successfully",
+            subscription
+        })
+    } catch (error) {
+
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+
+//fail subscription controller
+export const subscriptionFail = async (req,res)=>{
+    try {
+        
+        const {tran_id} = req.body;
+
+        if (!tran_id){
+            return res.status(400).json({
+                message:"no transection id found"
+            })
+        }
+
+        //database query 
+        const subscription = await Subscription.findOne({tran_id})
+
+        if (!subscription){
+            return res.status(404).json({
+                message:"subscription is not found"
+            })
+        }
+
+        subscription.status = "failed"
+        await subscription.save()
+
+
+        return res.status(200).json({
+            message: "payment failed"
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message,
+
+        })
+    
     }
 }

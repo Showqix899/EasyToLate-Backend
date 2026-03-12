@@ -31,6 +31,31 @@ const subscriptionSchema = new mongoose.Schema({
     subscriptionEndDate:{
       type:Date,
     },
+    tran_id:{
+        type:String,
+    },
+    bank_tran_id:{
+        type:String,
+    },
+    val_id: String,
+    status:{
+        type:String,
+        enum:["success","failed","pending","canceled"]
+
+    },
+    refundStatus: {
+        type: String,
+        enum: ["none", "requested", "refunded"],
+        default: "none"
+    },
+
+    refundAmount: {
+        type: Number,
+        default: 0
+    },
+
+    refundRequestedAt: Date,
+
     isPaid:{
         type:Boolean,
         default:false

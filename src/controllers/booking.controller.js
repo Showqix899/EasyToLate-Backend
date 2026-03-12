@@ -178,7 +178,6 @@ export const paymentSuccess = async (req, res) => {
 
         const { val_id, tran_id } = req.body
 
-        console.log("SSLCommerz Response:", req.body)
 
         // basic validation
         if (!val_id || !tran_id) {
