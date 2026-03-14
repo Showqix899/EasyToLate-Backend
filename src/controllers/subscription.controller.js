@@ -4,6 +4,7 @@ import axios from "axios"
 import SSLCommerzPayment from "sslcommerz-lts"
 import { v4 as uuidv4 } from "uuid"
 import { getCache, setCache, deleteCacheByPattern } from "../utils/cache.js"
+import bookingModel from "../models/booking.model.js"
 
 export const userData = (req,res)=>{
     const user = req.user
@@ -234,5 +235,37 @@ export const subscriptionFail = async (req,res)=>{
 
         })
     
+    }
+}
+
+
+//cancel subscription 
+export const cancelSubscription = async (req,res)=>{
+    try {
+        const {subs_id} = req.params
+        //find the subscription 
+        const subscription = await Subscription.findById(subs_id)
+
+        if(!subscription){
+            return res.status(404).json({
+                message:"no subscription found"
+            })
+        }
+
+        const user = await User.findById(user._id)
+
+        if (!user){
+            return res.status(404).json({
+                message:"No user found"
+            })
+        }
+
+        
+    } catch (error) {
+        
+        console.log("Cancel Payment Error:", error)
+        return res.status(500).json({
+            message: error.message
+        })
     }
 }
