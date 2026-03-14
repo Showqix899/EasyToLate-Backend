@@ -246,12 +246,28 @@ export const cancelSubscription = async (req,res)=>{
         //find the subscription 
         const subscription = await Subscription.findById(subs_id)
 
+        //basic validation
         if(!subscription){
             return res.status(404).json({
                 message:"no subscription found"
             })
         }
 
+        if (subscription.isPaid === false){
+
+        
+            return res.status(400).json({
+                message:"subscription is not paid"
+            })
+        }
+
+        if (subscription.refundStatus ==="refunded" || subscription.refundStatus ==="requested"){
+            return res.status(400).json({
+                message:"refund already is processing"
+            })
+        }
+
+        //user data
         const user = await User.findById(user._id)
 
         if (!user){
@@ -260,9 +276,70 @@ export const cancelSubscription = async (req,res)=>{
             })
         }
 
+        if (user.isSubscribed === false){
+            return res.status(400).json({
+                message:"already unsubscribed"
+            })
+        }
+
+        //current date
+        const subsdate = new Date(subscription.createdAt)
+        const now = new Date()
+
+        const diffDays = Math.floor(
+            (now - subsdate) / (1000 * 60 * 60 * 24)
+        )
+
+        // Check refund window (5 days)
+        if (diffDays > 5) {
+            return res.status(400).json({
+                message: "refund period expired"
+            })
+        }
+
+        if(!subscription.bank_tran_id){
+            return res.status(400).json({
+                message: "bank transaction id missing"
+            })
+        }
+
+        //deducted amount
+        const deductedAmount = Math.floor(
+            booking.place_rent - (booking.place_rent * 0.05)
+        )
+
+        const refund_url =
+            `https://sandbox.sslcommerz.com/validator/api/merchantTransIDvalidationAPI.php?bank_tran_id=${booking.bank_tran_id}&store_id=${process.env.STORE_ID}&store_passwd=${process.env.STORE_PASSWORD}&refund_amount=${deductedAmount}&refund_remarks=booking_cancel&format=json`
+
+
+
+
+
+        const refundResponse = await axios.get(refund_url)
         
+        const refundData = refundResponse.data
+                
+        if (refundData.status !== "success") {
+            return res.status(400).json({
+                message: "refund failed",
+                data: refundData
+            })
+        }
+
+        subscription.status = "canceled"
+        subscription.refundStatus = "refunded"
+        subscription.refundAmount = deductedAmount
+        subscription.refundRequestedAt = now
+
+        await subscription.save()
+
+        return res.json({
+            message: "subscription has been cancelled and refund processed",
+            refundAmount: deductedAmount
+        })
+
     } catch (error) {
-        
+
         console.log("Cancel Payment Error:", error)
         return res.status(500).json({
             message: error.message

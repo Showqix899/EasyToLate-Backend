@@ -396,6 +396,7 @@ export const cancelPayment = async (req, res) => {
         booking.status = "canceled"
         booking.refundStatus = "refunded"
         booking.refundAmount = deductedAmount
+        booking.refundRequestedAt = now
 
         await booking.save()
 
