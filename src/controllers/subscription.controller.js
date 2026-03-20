@@ -5,16 +5,12 @@ import SSLCommerzPayment from "sslcommerz-lts"
 import { v4 as uuidv4 } from "uuid"
 import { getCache, setCache, deleteCacheByPattern } from "../utils/cache.js"
 import bookingModel from "../models/booking.model.js"
-
-export const userData = (req, res) => {
-    const user = req.user
-    console.log("user data----", user);
-    return res.status(200).json({
-        user: user
-    })
-}
+import SubscriptionHistory from "../models/SubscriptionHistory.model.js"
 
 
+
+
+//create subscription 
 export const createSubscription = async (req, res) => {
     try {
         //getting current user
@@ -122,6 +118,42 @@ export const createSubscription = async (req, res) => {
 
             await Subscription.create(data)
 
+
+            try {
+                const subscriptionRecorde = {
+                    user: req.user._id,
+                    transactionId: tran_id, // fixed
+                    amount: amount,
+                    subscriptionType: subscription_style,
+                    startDate: currentDate,
+                    endDate: endDate,
+
+                    customer: {
+                        name: req.user.username,
+                        email: req.user.email,
+                        phone: req.user.phone,
+                        address: req.user.address, // added
+                        city: req.user.city,
+                        country: req.user.country
+                    },
+
+                    shipping: {
+                        name: req.user.username, // fixed
+                        address: req.user.address,
+                        city: req.user.city,
+                        country: req.user.country,
+                        postcode: 3000
+                    }
+                }
+
+                await SubscriptionHistory.create(subscriptionRecorde)
+
+            } catch (error) {
+                console.error("Subscription Save Error:", error)
+            }
+
+
+
             res.status(200).json({
                 payment_url: paymentGateWay
             })
@@ -192,18 +224,51 @@ export const createSubscription = async (req, res) => {
 
         const paymentGateWay = apiResponse.GatewayPageURL
 
-        user_subscription.subscriptionAmount=amount
-        user_subscription.tran_id=tran_id
-        user_subscription.subscription_style=subscription_style
-        user_subscription.subscriptionStartingDate=currentDate
-        user_subscription.subscriptionEndDate=endDate
+        user_subscription.subscriptionAmount = amount
+        user_subscription.tran_id = tran_id
+        user_subscription.subscription_style = subscription_style
+        user_subscription.subscriptionStartingDate = currentDate
+        user_subscription.subscriptionEndDate = endDate
 
         //save to db 
         await user_subscription.save();
 
+        try {
+            const subscriptionRecorde = {
+                user: req.user._id,
+                transactionId: tran_id, // fixed
+                amount: amount,
+                subscriptionType: subscription_style,
+                startDate: currentDate,
+                endDate: endDate,
+
+                customer: {
+                    name: req.user.username,
+                    email: req.user.email,
+                    phone: req.user.phone,
+                    address: req.user.address, // added
+                    city: req.user.city,
+                    country: req.user.country
+                },
+
+                shipping: {
+                    name: req.user.username, // fixed
+                    address: req.user.address,
+                    city: req.user.city,
+                    country: req.user.country,
+                    postcode: 3000
+                }
+            }
+
+            await SubscriptionHistory.create(subscriptionRecorde)
+
+        } catch (error) {
+            console.error("Subscription Save Error:", error)
+        }
+
 
         res.status(200).json({
-            payment_url : paymentGateWay
+            payment_url: paymentGateWay
         })
 
 
@@ -442,3 +507,109 @@ export const cancelSubscription = async (req, res) => {
         })
     }
 }
+
+//get user subscription behaviour
+export const getUserSubscriptionHistory = async (req, res) => {
+    try {
+        // pagination params
+        let { page = 1, limit = 10, subscriptionType, startDate, endDate } = req.query;
+
+        page = parseInt(page);
+        limit = parseInt(limit);
+
+        const skip = (page - 1) * limit;
+
+        // base query (user-specific)
+        const query = {
+            user: req.user._id
+        };
+
+        //  filter by subscription type
+        if (subscriptionType) {
+            query.subscriptionType = subscriptionType;
+        }
+
+        //  filter by date range
+        if (startDate || endDate) {
+            query.startDate = {};
+
+            if (startDate) {
+                query.startDate.$gte = new Date(startDate);
+            }
+
+            if (endDate) {
+                query.startDate.$lte = new Date(endDate);
+            }
+        }
+
+        // total count for pagination
+        const total = await SubscriptionHistory.countDocuments(query);
+
+        // fetch data
+        const subscriptions = await SubscriptionHistory.find(query)
+            .sort({ createdAt: -1 }) // latest first
+            .skip(skip)
+            .limit(limit);
+
+        // response
+        res.status(200).json({
+            success: true,
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data: subscriptions
+        });
+
+    } catch (error) {
+        console.error("Get Subscription History Error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+
+import mongoose from "mongoose";
+
+export const getSubscriptionDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        //  Validate MongoDB ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid subscription ID"
+            });
+        }
+
+        //  Find subscription (only for this user)
+        const subscription = await SubscriptionHistory.findOne({
+            _id: id,
+            user: req.user._id
+        });
+
+        //  Not found
+        if (!subscription) {
+            return res.status(404).json({
+                success: false,
+                message: "Subscription not found"
+            });
+        }
+
+        //  Success response
+        res.status(200).json({
+            success: true,
+            data: subscription
+        });
+
+    } catch (error) {
+        console.error("Get Subscription Details Error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

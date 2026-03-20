@@ -10,7 +10,6 @@ import {
 } from "../controllers/booking.controller.js"
 
 //test 
-import { userData } from "../controllers/subscription.controller.js";
 import {protect,adminAccess} from "../middlewares/auth.mddleware.js"
 
 
@@ -29,7 +28,6 @@ router.get("/history",protect,userBookingHistory)
 
 router.get("/admin-history",adminAccess,adminUserBookingHistory)
 
-router.get("/userdata",protect,userData)
 
 
 export default router;
