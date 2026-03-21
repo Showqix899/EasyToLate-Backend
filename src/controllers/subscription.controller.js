@@ -342,6 +342,16 @@ export const subscriptionSuccess = async (req, res) => {
         user.isSubscribed = true
         await user.save()
 
+        const subscriptionRecorde = await SubscriptionHistory.find({
+            "transectionId":tran_id,
+        })
+
+        subscriptionRecorde.status = "paid"
+        subscriptionRecorde.bank_tran_id=bank_tran_id
+        subscriptionRecorde.val_id = val_id
+
+        await subscriptionRecorde.save()
+
         return res.status(200).json({
             message: "You subscribed to EasyToLet successfully",
             subscription
@@ -379,6 +389,15 @@ export const subscriptionFail = async (req, res) => {
         subscription.status = "failed"
         await subscription.save()
 
+        //subscription history updated
+        const subscriptionRecorde = await SubscriptionHistory.find({
+            "transectionId":tran_id,
+        })
+
+        subscriptionRecorde.status = "failed"
+        
+
+        await subscriptionRecorde.save()
 
         return res.status(200).json({
             message: "payment failed"
@@ -493,6 +512,17 @@ export const cancelSubscription = async (req, res) => {
         await subscription.save()
 
         await user.save()
+
+
+        const subscriptionRecorde = await SubscriptionHistory.find({
+            "transectionId":tran_id,
+        })
+
+        subscriptionRecorde.status = "cancelled"
+        subscriptionRecorde.bank_tran_id=bank_tran_id
+        subscriptionRecorde.val_id = val_id
+
+        await subscriptionRecorde.save()
 
         return res.json({
             message: "subscription has been cancelled and refund processed",

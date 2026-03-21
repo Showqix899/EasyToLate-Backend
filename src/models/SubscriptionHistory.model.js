@@ -92,6 +92,12 @@ const subscriptionGistorySchema = new mongoose.Schema({
             type: Number,
             default: 3000
         }
+    },
+    bank_tran_id:{
+        type:String,
+    },
+    val_id:{
+        type:String,
     }
 
 }, {
