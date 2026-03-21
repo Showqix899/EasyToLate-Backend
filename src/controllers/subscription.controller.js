@@ -613,3 +613,159 @@ export const getSubscriptionDetails = async (req, res) => {
         });
     }
 };
+
+
+
+
+
+//admin subscripton controlls  
+
+//get user's subscriptions admin controll
+
+export const adminSubscriptionSearch = async (req, res) => {
+    try {
+
+        let {
+            page = 1,
+            limit = 10,
+            subscriptionType,
+            startdate,
+            endDate,
+            username,
+            email,
+            city,
+            phone,
+            status,
+        } = req.query;
+
+        // convert to number
+        page = parseInt(page);
+        limit = parseInt(limit);
+
+        // ---------------------------
+        // BUILD QUERY OBJECT
+        // ---------------------------
+        let query = {};
+
+        // subscription type
+        if (subscriptionType) {
+            query.subscriptionType = subscriptionType;
+        }
+
+        // status
+        if (status) {
+            query.status = status;
+        }
+
+        // city filter (nested)
+        if (city) {
+            query["customer.city"] = { $regex: city, $options: "i" };
+        }
+
+        // phone filter (nested)
+        if (phone) {
+            query["customer.phone"] = { $regex: phone, $options: "i" };
+        }
+
+        // ---------------------------
+        // DATE FILTER
+        // ---------------------------
+        if (startdate || endDate) {
+            query.startDate = {};
+
+            if (startdate) {
+                query.startDate.$gte = new Date(startdate);
+            }
+
+            if (endDate) {
+                query.startDate.$lte = new Date(endDate);
+            }
+        }
+
+        // ---------------------------
+        // USER FILTER (IMPORTANT)
+        // ---------------------------
+        if (username || email) {
+
+            let userQuery = {};
+
+            if (username) {
+                userQuery.username = { $regex: username, $options: "i" };
+            }
+
+            if (email) {
+                userQuery.email = { $regex: email, $options: "i" };
+            }
+
+            const users = await User.find(userQuery).select("_id");
+
+            const userIds = users.map(user => user._id);
+
+            query.user = { $in: userIds };
+        }
+
+        // ---------------------------
+        // SORT QUERY FOR CACHE KEY
+        // ---------------------------
+        const sortedQuery = Object.keys(req.query)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = req.query[key];
+                return acc;
+            }, {});
+
+        // cache key
+        const cachekey = `${req.user.username}SubscriptionSearch:${JSON.stringify(sortedQuery)}`;
+
+        // ---------------------------
+        // CHECK CACHE
+        // ---------------------------
+        const cachedData = await getCache(cachekey);
+
+        if (cachedData) {
+            return res.status(200).json({
+                source: "cache",
+                ...cachedData
+            });
+        }
+
+        // ---------------------------
+        // PAGINATION
+        // ---------------------------
+        const skip = (page - 1) * limit;
+
+        const [data, total] = await Promise.all([
+            SubscriptionHistory.find(query)
+                .populate("user", "username email")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+
+            SubscriptionHistory.countDocuments(query)
+        ]);
+
+        const response = {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            count: data.length,
+            data
+        };
+
+        // ---------------------------
+        // SET CACHE (optional TTL = 60s)
+        // ---------------------------
+        await setCache(cachekey, response, 60);
+
+        return res.status(200).json({
+            source: "db",
+            ...response
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};

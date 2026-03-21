@@ -6,6 +6,7 @@ import { createSubscription,
     cancelSubscription,
     getUserSubscriptionHistory,
     getSubscriptionDetails,
+    adminSubscriptionSearch,
  } from "../controllers/subscription.controller.js"
 const router = express.Router()
 
@@ -28,6 +29,9 @@ router.get("/history",protect,getUserSubscriptionHistory)
 
 //get user subscription details 
 router.get("/details/:id",protect,getSubscriptionDetails)
+
+//admin subscription search 
+router.get("/subscription-history-search/",adminAccess,adminSubscriptionSearch)
 
 
 export default router
