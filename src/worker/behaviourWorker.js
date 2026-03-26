@@ -2,13 +2,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Worker } from "bullmq";
-import { redisClient } from "../config/redis.js";
 import UserBehaviourModel from "../models/UserBehaviour.model.js";
 import connectDB from "../config/db.js";
-import IORedis from "ioredis"
+import IORedis from "ioredis";
 
 //database connection 
-await connectDB()
+try {
+    await connectDB()
+
+} catch (error) {
+    console.log(error.message)
+}
 
 
 //Redis connection for BullMQ

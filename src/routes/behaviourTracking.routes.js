@@ -4,7 +4,7 @@ import {
     trackPlaceBooking,
     trackPlaceClick,
     trackPlaceView,
-} from "../controllers/behaviour.controller.js"
+} from "../controllers/behavior.controller.js"
 
 import {
     protect,
@@ -14,7 +14,8 @@ import {
 const router = express.Router()
 
 
-router.post("/:place_id/view",trackPlaceView)
-router.post("/:place_id/click",protect,trackPlaceClick)
-router.post("/:place_id/booked",protect,trackPlaceBooking)
+router.post("/view/:place_id",protect,trackPlaceView)
+router.post("/click/:place_id",protect,trackPlaceClick)
+router.post("/booked/:place_id",protect,trackPlaceBooking)
 
+export default router

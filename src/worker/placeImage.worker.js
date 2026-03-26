@@ -6,10 +6,13 @@ import cloudinary from "../config/cloudinary.js";
 import Place from "../models/Accomodation.model.js"
 import connectDB from "../config/db.js";
 
-//connectt to db
-await connectDB();
+//database connection 
+try {
+    await connectDB()
 
-
+} catch (error) {
+    console.log(error.message)
+}
 //Redis connection for BullMQ
 const connection = new IORedis({
     host: "redis",
