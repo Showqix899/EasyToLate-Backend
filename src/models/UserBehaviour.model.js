@@ -16,7 +16,7 @@ const userBehaviorSchema = new mongoose.Schema({
 
     action:{
         type:String,
-        enum:["view","click","wishlist","booking"],
+        enum:["view","click","booking"],
         required:true
     },
 

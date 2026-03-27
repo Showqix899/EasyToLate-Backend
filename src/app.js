@@ -12,7 +12,10 @@ import behaviourTrackerRoutes from "./routes/behaviourTracking.routes.js"
 import placeRecomendator from "./routes/recomendedPlace.routes.js"
 
 const app = express(); //express app
-
+app.use((req,res,next)=>{
+    req.setTimeout(30000);
+    next();
+})
 app.use(cors())
 app.use(express.json()) //json parser
 app.use(express.urlencoded({ extended: true }))
