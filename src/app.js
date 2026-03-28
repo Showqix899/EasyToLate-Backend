@@ -10,6 +10,7 @@ import bookingRoutes from "./routes/booking.routes.js"
 import subscriptionRoutes from "./routes/subscription.routes.js"
 import behaviourTrackerRoutes from "./routes/behaviourTracking.routes.js"
 import placeRecomendator from "./routes/recomendedPlace.routes.js"
+import ratingReviewRoutes from "./routes/reviewRatings.routes.js"
 
 const app = express(); //express app
 app.use((req,res,next)=>{
@@ -42,6 +43,7 @@ app.use("/api/payment",bookingRoutes)
 app.use("/api/subscription",subscriptionRoutes)
 app.use("/api/behaviour-track",behaviourTrackerRoutes)
 app.use("/api/place-recomendation",placeRecomendator)
+app.use("/api/review-ratings",ratingReviewRoutes)
 
 //******************************** */
 

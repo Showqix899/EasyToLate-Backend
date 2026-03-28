@@ -106,6 +106,10 @@ const placeSchema = new mongoose.Schema({
         default:"flexible"
     },
     //rating
+    totalRatingScore:{
+        type:Number,
+        default:0,
+    },
     ratingAverage:{
         type:Number,
         default:0
@@ -131,12 +135,6 @@ const placeSchema = new mongoose.Schema({
         type:Boolean,
         default:false,
     },
-
-    isAvailable:{
-        type:Boolean,
-        default:true,
-    }
-
 
 
 },{
