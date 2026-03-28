@@ -6,6 +6,11 @@ const ratingRecordeSchema = new mongoose.Schema({
         ref:"User",
         required:true,
     },
+    place:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Place",
+        required:true,
+    },
 
     gaveRating:{
         type:Boolean,
