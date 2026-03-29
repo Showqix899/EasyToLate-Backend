@@ -15,7 +15,13 @@ const ratingRecordeSchema = new mongoose.Schema({
     gaveRating:{
         type:Boolean,
         default:false,
-    }
+    },
+    rating:{
+        type:Number,
+        default:0,
+        required:true
+        }
+    
 
 },{
     timestamps:true

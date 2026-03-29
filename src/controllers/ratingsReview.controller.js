@@ -83,6 +83,7 @@ export const giveRatings = async (req, res) => {
             user: userId,
             place: place_id,
             gaveRating: true,
+            rating:rating
         })
 
         return res.status(200).json({
@@ -97,6 +98,77 @@ export const giveRatings = async (req, res) => {
     }
 }
 
+//update ratings 
+export const updateRatings = async(req,res)=>{
+    try {
+        //get user id
+        const userId = req.user._id
+
+        //get rating recorde id 
+        const {rating_recorde_id} = req.params;
+
+        const {rating} = req.body;
+
+        if(!rating){
+            return res.status(404).json({
+                message:"please provide a rating"
+            })
+        }
+
+        if(!rating_recorde_id){
+            return res.status(400).json({
+                message:"no ratings recorde id provided"
+            })
+        }
+
+
+        //find the recorde ratings 
+        const recorde = await RatingRecorde.findById(rating_recorde_id)
+
+        if(!recorde){
+            return res.status(404).json({
+                message:"no ratings recorde found"
+            })
+        }
+
+        //find the place 
+        const place = await Place.findById(recorde.place)
+
+        if(!place){
+            return res.status(404).json({
+                message:"no place found"
+            })
+        }
+
+        //update ratings 
+        place.totalRatingScore -= recorde.rating
+        await place.save()
+
+
+        place.totalRatingScore+=parseInt(rating) //add the new rating 
+
+        //update avarage rating 
+        place.ratingAverage = (place.totalRatingScore/place.ratingCount).toFixed(1)
+
+        //save the new instance
+        await place.save()
+
+        //update the recorde 
+        recorde.rating = rating
+        await recorde.save()
+        
+        return res.status(200).json({
+            rating: place.ratingAverage,
+            message: "done"
+        })
+
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
 
 
 
