@@ -14,9 +14,9 @@ export const giveRatings = async (req, res) => {
         //get place id
         const { place_id } = req.params;
 
-        if(!place_id){
+        if (!place_id) {
             return res.status(400).json({
-                message:"no place id porvided"
+                message: "no place id porvided"
             })
         }
 
@@ -40,7 +40,7 @@ export const giveRatings = async (req, res) => {
         //check if the user already gave ratings 
         const ratingRecorde = await RatingRecorde.find({
             "user": userId,
-            "place":place_id
+            "place": place_id
         })
 
         if (ratingRecorde.length > 0) {
@@ -63,10 +63,9 @@ export const giveRatings = async (req, res) => {
             })
         }
 
-        //get place id 
 
 
-        
+
         //get the current ratings status
         let currentTotalScore = place.totalRatingScore;
         let ratingCount = place.ratingCount;
@@ -82,7 +81,7 @@ export const giveRatings = async (req, res) => {
 
         await RatingRecorde.create({
             user: userId,
-            place:place_id,
+            place: place_id,
             gaveRating: true,
         })
 
@@ -100,16 +99,19 @@ export const giveRatings = async (req, res) => {
 
 
 
-export const giveReview = async (req, res)=>{
+
+
+//user review
+export const giveReview = async (req, res) => {
     try {
         const userId = req.user._id;
-        const {comment} = req.body;
-         //get place id
+        const { comment } = req.body;
+        //get place id
         const { place_id } = req.params;
 
-        if(!place_id){
+        if (!place_id) {
             return res.status(400).json({
-                message:"no place id porvided"
+                message: "no place id porvided"
             })
         }
 
@@ -128,19 +130,19 @@ export const giveReview = async (req, res)=>{
             })
         }
 
-        if (!comment){
+        if (!comment) {
             return res.status(400).json({
-                message:"please provie comments"
+                message: "please provie comments"
             })
         }
 
         //check if the user already gave review 
         const checkReview = await Review.find({
-            "user":userId,
-            "place":place_id
+            "user": userId,
+            "place": place_id
         })
 
-        if(checkReview.length > 0){
+        if (checkReview.length > 0) {
             return res.status(400).json({
                 message: "you already gave reivew to this place"
             })
@@ -148,19 +150,121 @@ export const giveReview = async (req, res)=>{
 
         //create review instance
         await Review.create({
-            user:userId,
-            place:place_id,
-            comment:comment,
+            user: userId,
+            place: place_id,
+            comment: comment,
         })
 
         return res.status(200).json({
-            message:"done"
+            message: "done"
         })
 
 
     } catch (error) {
         return res.status(500).json({
-                message:error.message
+            message: error.message
+        })
+    }
+}
+
+
+//update comments 
+export const updateReview = async (req, res) => {
+    try {
+        //get user  id
+        const userId = req.user._id
+
+        //get review id 
+        const { review_id } = req.params;
+
+        if (!review_id) {
+            return res.status(400).json({
+                message: "no review id provided"
             })
+        }
+
+        const { comment } = req.body;
+
+        //get the review 
+        const review = await Review.findById(review_id)
+
+        if (!review) {
+            return res.status(404).json({
+                message: "no review found"
+            })
+        }
+        //chekeck if the review created by this user 
+        if (toString(userId) !== toString(review.user)) {
+            return res.status(403).json({
+                message: "forbidden request. You are not the owner of this review"
+            })
+        }
+
+        if (!comment) {
+            return res.status(400).json({
+                message: "please, provide a comment"
+            })
+        }
+
+        review.comment = comment;
+        await review.save()
+
+        return res.status(200).json({
+            message: "your review is updated successfully"
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+
+//delete comments 
+export const deleteReview = async (req, res) => {
+    try {
+        //get user  id
+        const userId = req.user._id
+
+        //get review id 
+        const { review_id } = req.params;
+
+        if (!review_id) {
+            return res.status(400).json({
+                message: "no review id provided"
+            })
+        }
+
+        //get the review 
+        const review = await Review.findById(review_id)
+
+        if (!review) {
+            return res.status(404).json({
+                message: "no review found"
+            })
+        }
+
+        //chekeck if the review created by this user 
+        if (toString(userId) !== toString(review.user)) {
+            return res.status(400).json({
+                message: "forbidden, you are not the owner of this review"
+            })
+        }
+
+        //delete the review 
+        await review.deleteOne()
+
+        return res.status(200).json({
+            message: "your review is deleted successfully"
+        })
+
+
+
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
     }
 }
