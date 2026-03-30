@@ -1,8 +1,10 @@
-import { isObjectIdOrHexString } from "mongoose";
+import { isObjectIdOrHexString, set } from "mongoose";
 import Place from "../models/Accomodation.model.js"
 import User from "../models/User.model.js"
 import RatingRecorde from "../models/Rating.model.js"
 import Review from "../models/Review.model.js"
+import { getCache, setCache, deleteCacheByPattern } from "../utils/cache.js"
+
 
 
 
@@ -83,7 +85,7 @@ export const giveRatings = async (req, res) => {
             user: userId,
             place: place_id,
             gaveRating: true,
-            rating:rating
+            rating: rating
         })
 
         return res.status(200).json({
@@ -99,25 +101,25 @@ export const giveRatings = async (req, res) => {
 }
 
 //update ratings 
-export const updateRatings = async(req,res)=>{
+export const updateRatings = async (req, res) => {
     try {
         //get user id
         const userId = req.user._id
 
         //get rating recorde id 
-        const {rating_recorde_id} = req.params;
+        const { rating_recorde_id } = req.params;
 
-        const {rating} = req.body;
+        const { rating } = req.body;
 
-        if(!rating){
+        if (!rating) {
             return res.status(404).json({
-                message:"please provide a rating"
+                message: "please provide a rating"
             })
         }
 
-        if(!rating_recorde_id){
+        if (!rating_recorde_id) {
             return res.status(400).json({
-                message:"no ratings recorde id provided"
+                message: "no ratings recorde id provided"
             })
         }
 
@@ -125,18 +127,18 @@ export const updateRatings = async(req,res)=>{
         //find the recorde ratings 
         const recorde = await RatingRecorde.findById(rating_recorde_id)
 
-        if(!recorde){
+        if (!recorde) {
             return res.status(404).json({
-                message:"no ratings recorde found"
+                message: "no ratings recorde found"
             })
         }
 
         //find the place 
         const place = await Place.findById(recorde.place)
 
-        if(!place){
+        if (!place) {
             return res.status(404).json({
-                message:"no place found"
+                message: "no place found"
             })
         }
 
@@ -145,10 +147,10 @@ export const updateRatings = async(req,res)=>{
         await place.save()
 
 
-        place.totalRatingScore+=parseInt(rating) //add the new rating 
+        place.totalRatingScore += parseInt(rating) //add the new rating 
 
         //update avarage rating 
-        place.ratingAverage = (place.totalRatingScore/place.ratingCount).toFixed(1)
+        place.ratingAverage = (place.totalRatingScore / place.ratingCount).toFixed(1)
 
         //save the new instance
         await place.save()
@@ -156,7 +158,7 @@ export const updateRatings = async(req,res)=>{
         //update the recorde 
         recorde.rating = rating
         await recorde.save()
-        
+
         return res.status(200).json({
             rating: place.ratingAverage,
             message: "done"
@@ -333,6 +335,80 @@ export const deleteReview = async (req, res) => {
 
 
 
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+
+//get all the review for specific place 
+export const getPlaceReviews = async (req, res) => {
+    try {
+        const { 
+            place_id,
+            page=1,
+            limit=10,
+         } = req.query;
+
+
+        //check place id 
+        if (!place_id) {
+            return res.status(400).json({
+                message: "place id not provided"
+            })
+        }
+
+        //check cache for data 
+        const cacheKey = `place_reviews:${place_id}_${page}_${limit}`
+        const cachedData = await getCache(cacheKey)
+
+        if (cachedData) {
+            return res.status(200).json({
+                message: cachedData
+            })
+        }
+
+        //check if the place exist
+        const place = await Place.findById(place_id)
+
+        if (!place) {
+            return res.status(404).json({
+                message: "place is not found"
+            })
+        }
+
+        //seting limit 
+        const skip = (page - 1) * limit;
+
+
+        //get all the review of this place 
+        const [reviews, totalReviews] = await Promise.all([
+            Review.find({ place: place_id })
+                .sort({ createdAt: -1 })
+                .skip(Number(skip))
+                .limit(Number(limit))
+                .populate("user","email username")
+                .lean(),
+
+            Review.countDocuments({ place: place_id })
+        ])
+
+        const response = {
+            reviews:reviews,
+            page:page,
+            limit:limit,
+            totalReviews:totalReviews
+        }
+
+        //set cache 
+        await setCache(cacheKey,response,300)
+
+        return res.json({
+            response
+        });
 
     } catch (error) {
         return res.status(500).json({

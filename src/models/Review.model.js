@@ -23,5 +23,8 @@ const reviewSchema = new mongoose.Schema({
     timestamps:true
 })
 
+//data base indexing 
+reviewSchema.index({place:1,createdAt:-1});
+
 
 export default mongoose.model("Review",reviewSchema)

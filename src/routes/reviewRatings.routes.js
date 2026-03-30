@@ -5,6 +5,7 @@ import {
     updateReview,
     deleteReview,
     updateRatings,
+    getPlaceReviews,
 
 } from "../controllers/ratingsReview.controller.js"
 import {protect,adminAccess} from "../middlewares/auth.mddleware.js"
@@ -22,6 +23,8 @@ router.post("/user-review/:place_id",protect,giveReview)
 router.put("/user-review-update/:review_id",protect,updateReview)
 //delete review routing 
 router.delete("/user-review-delete/:review_id",protect,deleteReview)
+//get all reviews 
+router.get("/all-reviews/",protect,getPlaceReviews)
 
 
 
