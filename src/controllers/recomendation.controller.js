@@ -1,5 +1,6 @@
 import UserBehaviour from "../models/UserBehaviour.model.js"
 import Place from "../models/Accomodation.model.js"
+import {getCache,setCache} from "../utils/cache.js"
 
 const ACTION_SCORE = {
     view:1,
@@ -16,11 +17,18 @@ export const getRecomendedPlace = async (req,res)=>{
 
 
         if(!behaviours.length){
-            //fallback recommendation
+            //fallback recommendation            
             const places = await Place.find({
+                "location.city":req.user.city,
+                "location.state":req.user.state,
+                "location.country":req.user.country,
                 isApproved:true,
-                isBlocked:false
-            }).limit(10)
+                isBlocked:false,
+            })
+            .sort({ratingAverage:-1}) //highest rating first
+            .limit(10)
+
+            console.log("response from fallback recomendation")
 
             return res.json(places)
         }

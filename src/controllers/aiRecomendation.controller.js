@@ -22,7 +22,18 @@ export const getAiRecomendations = async (req, res) => {
             .populate("place");
 
         if (!behaviors.length) {
-            console.log("this user has no behavoirs")
+            //fallback recommendation            
+            const places = await Place.find({
+                "location.city":req.user.city,
+                "location.state":req.user.state,
+                "location.country":req.user.country,
+                isApproved:true,
+                isBlocked:false,
+            })
+            .sort({ratingAverage:-1}) //highest rating first
+            .limit(10)
+
+            return res.json(places)
         }
 
 

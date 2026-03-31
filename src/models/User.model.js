@@ -32,7 +32,18 @@ const userSchema = new mongoose.Schema(
     profile_pic: String,
 
     address: String,
-
+    city:{
+      type:String,
+      required:true,
+    },
+    state:{
+      type:String,
+      required:true
+    },
+    country:{
+      type:String,
+      default:"Bangladesh"
+    },
     // role based access control
     role: {
       type: String,
