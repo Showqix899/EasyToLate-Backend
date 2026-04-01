@@ -6,9 +6,9 @@ import model from "../config/genAI.js"
 
 //assigning scores
 const WEIGHTS = {
-    view: 1,
-    click: 3,
-    booking: 5
+    view: process.env.VIEW_SCORE,
+    click: process.env.CLICK_SCORE,
+    booking: process.env.BOOKING_SCORE
 };
 
 //get ai recomendation 
