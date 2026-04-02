@@ -129,5 +129,10 @@ const bookingSchema = new mongoose.Schema({
     timestamps: true,
 })
 
+//database indexing 
+bookingSchema.index({ status: 1 })
+bookingSchema.index({ isPaid: 1 })
+bookingSchema.index({ refundStatus: 1 })
+
 
 export default mongoose.model("Booking", bookingSchema)
