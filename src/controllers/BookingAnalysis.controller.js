@@ -112,3 +112,70 @@ export const getBookingOverviewAnalytics = async (req, res) => {
         })
     }
 }
+
+
+//get revenue analytics
+export const getRevenueAnalytics = async (req, res) => {
+    try {
+
+        const { startDate, endDate } = req.query
+
+        const matchStage = {
+            status: "success"
+        }
+
+        // apply date filters only if provided
+        if (startDate || endDate) {
+
+            matchStage.createdAt = {}
+
+            if (startDate) {
+                matchStage.createdAt.$gte = new Date(startDate)
+            }
+
+            if (endDate) {
+                matchStage.createdAt.$lte = new Date(endDate)
+            }
+
+        }
+
+        const revenue = await Booking.aggregate([
+            {
+                $match: matchStage
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$createdAt" },
+                        month: { $month: "$createdAt" }
+                    },
+                    revenue: {
+                        $sum: "$place_rent"
+                    },
+                    bookings: {
+                        $sum: 1
+                    }
+                }
+            },
+            {
+                $sort: {
+                    "_id.year": 1,
+                    "_id.month": 1
+                }
+            }
+        ])
+
+        res.status(200).json({
+            success: true,
+            data: revenue
+        })
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch revenue analytics",
+            error: error.message
+        })
+    }
+}
