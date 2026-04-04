@@ -179,3 +179,106 @@ export const getRevenueAnalytics = async (req, res) => {
         })
     }
 }
+
+
+//get userstats
+export const getUserStates = async (req, res) => {
+  try {
+    const {userEmail} = req.body; // assuming auth middleware
+
+    // Get all successful & paid bookings of the user
+    const bookings = await Booking.find({
+      email: userEmail,
+      status: "success",
+      isPaid: true,
+    }).sort({ createdAt: -1 });
+
+    if (!bookings.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No bookings found",
+        stats: {},
+        bookings: [],
+      });
+    }
+
+    const now = new Date();
+
+    let dailyTotal = 0;
+    let monthlyTotal = 0;
+    let yearlyTotal = 0;
+
+    let dailyCount = 0;
+    let monthlyCount = 0;
+    let yearlyCount = 0;
+
+    let totalSpending = 0;
+
+    bookings.forEach((booking) => {
+      const bookingDate = new Date(booking.createdAt);
+      const amount = booking.place_rent + booking.serviceFee;
+
+      totalSpending += amount;
+
+      // Daily
+      if (
+        bookingDate.getDate() === now.getDate() &&
+        bookingDate.getMonth() === now.getMonth() &&
+        bookingDate.getFullYear() === now.getFullYear()
+      ) {
+        dailyTotal += amount;
+        dailyCount++;
+      }
+
+      // Monthly
+      if (
+        bookingDate.getMonth() === now.getMonth() &&
+        bookingDate.getFullYear() === now.getFullYear()
+      ) {
+        monthlyTotal += amount;
+        monthlyCount++;
+      }
+
+      // Yearly
+      if (bookingDate.getFullYear() === now.getFullYear()) {
+        yearlyTotal += amount;
+        yearlyCount++;
+      }
+    });
+
+    const stats = {
+      daily: {
+        total: dailyTotal,
+        average: dailyCount ? dailyTotal / dailyCount : 0,
+        count: dailyCount,
+      },
+      monthly: {
+        total: monthlyTotal,
+        average: monthlyCount ? monthlyTotal / monthlyCount : 0,
+        count: monthlyCount,
+      },
+      yearly: {
+        total: yearlyTotal,
+        average: yearlyCount ? yearlyTotal / yearlyCount : 0,
+        count: yearlyCount,
+      },
+      overall: {
+        total: totalSpending,
+        average: bookings.length ? totalSpending / bookings.length : 0,
+        count: bookings.length,
+      },
+    };
+
+    res.status(200).json({
+      success: true,
+      stats,
+      bookings,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch spending stats",
+      error: error.message,
+    });
+  }
+};

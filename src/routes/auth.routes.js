@@ -12,6 +12,7 @@ import {
     userDelation,
     userUpdation,
     userSearchFilter,
+    getUserSpendingStats,
 } from "../controllers/auth.controller.js"
 
 
@@ -51,6 +52,9 @@ router.put("/user-update",protect,upload.single("profile_pic"),userUpdation)
 
 //admin userlist 
 router.get("/user-list",adminAccess,userSearchFilter)
+
+//get user stats 
+router.get("/user-states",protect,getUserSpendingStats)
 
 
 
