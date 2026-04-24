@@ -12,18 +12,18 @@ import { sendVerificationEmail,sendPasswordResetLinkEmail } from "../services/em
 import { emailQueue } from "../queue/emailQueue.js"
 import { getCache,setCache,deleteCacheByPattern } from "../utils/cache.js"
 
-import cloudinary from "../config/cloudinary.js"
+import cloudinary from "../config/cloudinary.js";
 
 
 
 //register user 
 export const registerUser = async(req,res)=>{
     try {
-        const {username,email,phone,password,address} = req.body;
+        const {username,email,phone,password,address,city,state} = req.body;
 
         //basic validation 
 
-        if (!username || !email || !password){
+        if (!username || !email || !password || !city || !state){
             return res.status(400).json({
                 message: "required fields missing",
             });
@@ -50,7 +50,7 @@ export const registerUser = async(req,res)=>{
         if (req.file){
             const uploadImage = ()=>{
                 return new Promise((resolve,reject)=>{
-                    const stream = cloudinary.v2.uploader.upload_stream(
+                    const stream = cloudinary.uploader.upload_stream(
                         {folder:"profile_pic"},
                         (err,result)=> (result ? resolve(result) : reject(err))
                     );
@@ -74,6 +74,8 @@ export const registerUser = async(req,res)=>{
             phone,
             password:hashedPassword,
             address,
+            city,
+            state,
             profile_pic: porfilePicUrl,
             emailVerifyToken:token,
             emailVerifyExpires: Date.now() + 15 *60*1000
