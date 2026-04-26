@@ -124,12 +124,12 @@ export const verifyEmail = async (req,res)=>{
 
         await user.save();
 
-        res.json({message: "Account verified successfully"});
+        res.redirect("http://localhost:5173/verify/users?status=success")
 
 
     }catch(error){
         console.log("error at verifying email ",error.message)
-        res.status(500).json({message:"server error"})
+        res.redirect("http://localhost/5173/verify/users/status=error")
     }
 }
 
