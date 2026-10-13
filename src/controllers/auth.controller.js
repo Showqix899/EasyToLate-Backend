@@ -112,7 +112,7 @@ export const verifyEmail = async (req,res)=>{
         });
 
         if (!user){
-            return res.status(400).json({message: "Invalid or expired token"});
+            res.redirect("http://localhost/5173/verify/users?status=error")
 
         }
 
@@ -129,7 +129,7 @@ export const verifyEmail = async (req,res)=>{
 
     }catch(error){
         console.log("error at verifying email ",error.message)
-        res.redirect("http://localhost/5173/verify/users/status=error")
+        res.redirect("http://localhost/5173/verify/users?status=error")
     }
 }
 

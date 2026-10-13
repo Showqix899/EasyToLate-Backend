@@ -17,9 +17,9 @@ import {
 
 
 import {protect,adminAccess} from "../middlewares/auth.mddleware.js"
+import swagger from "../config/swagger.js";
 
 const router = express.Router();
-
 //user register  
 router.post("/register",upload.single("profile_pic"),registerUser);
 

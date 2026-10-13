@@ -31,7 +31,7 @@
     "redis": "^5.10.0",
     "sslcommerz-lts": "^1.2.0",
     "streamifier": "^0.1.1",
-    "swagger-jsdoc": "^6.2.8",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0"
   },

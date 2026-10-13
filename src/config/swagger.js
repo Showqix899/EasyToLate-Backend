@@ -1,25 +1,29 @@
 import swaggerJsdoc from "swagger-jsdoc";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const swaggerOptions = {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const options = {
   definition: {
     openapi: "3.0.0",
     info: {
       title: "EasyToLet API",
       version: "1.0.0",
-      description: "User Authentication & Management API"
+      description: "Express + MongoDB backend",
     },
-    servers: [
-      {
-        url: "http://localhost:5000"
-      }
-    ]
+    servers: [{ url: "http://localhost:5000" }], 
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      },
+    },
   },
-
-  // 👇 THIS IS THE MOST COMMON BUG
-  // use absolute glob, recursive
-  apis: ["./src/**/*.js"]
+  // absolute paths, so it works no matter where you run node from
+  apis: [
+    path.join(__dirname, "../routes/*.js"),
+    path.join(__dirname, "../models/*.js"),
+  ],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-export default swaggerSpec;
+export default swaggerJsdoc(options);

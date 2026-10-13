@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
-import swaggerSpec from "./config/swagger.js";
+import swaggerJsdoc from "./config/swagger.js";
 import session from "express-session"
 
 //routes
@@ -36,8 +36,7 @@ app.use(
 
 // Swagger UI route
 // Swagger route MUST be before other routes
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerJsdoc));
 //main routes *********************
 //auth routes 
 app.use("/api/auth",authRoutes)
